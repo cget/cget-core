@@ -399,6 +399,7 @@ function(CGET_FORCE_BUILD name)
 
   if(MSVC AND ARGS_NUGET_PACKAGE)
     set(CGET_${name}_BUILT 1)
+    CGET_NUGET_BUILD(${ARGS_NUGET_PACKAGE} "${ARGS_NUGET_VERSION}")
   elseif (EXISTS "${REPO_DIR}/include.cmake")
     set(CGET_${name}_BUILT 1)
   elseif (EXISTS ${REPO_DIR}/CMakeLists.txt OR EXISTS ${REPO_DIR}/cmake/CMakeLists.txt OR EXISTS ${REPO_DIR}/src/CMakeLists.txt)
@@ -459,7 +460,7 @@ function(CGET_DIRECT_GET_PACKAGE name)
 
   if (NOT EXISTS ${STAGING_DIR})    
     if (MSVC AND ARGS_NUGET_PACKAGE)
-        CGET_NUGET_BUILD(${ARGS_NUGET_PACKAGE} "${ARGS_NUGET_VERSION}")
+        CGET_MESSAGE(3 "Using nuget for ${name}")
     elseif (ARGS_GIT)
 
       if(NOT DEFINED ARGS_COMMIT_ID AND NOT DEFINED CHECKOUT_TAG)
