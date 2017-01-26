@@ -3,9 +3,17 @@ include(CMakeParseArguments)
 cmake_policy(SET CMP0011 NEW)
 cmake_policy(SET CMP0012 NEW)
 
-find_package(Git)
+find_program(Git_EXECUTABLE git HINTS 
+    "C:/Program Files (x86)/SmartGitHg/git/bin"
+    "C:/Program Files (x86)/SmartGit/git/bin"
+    "C:/Program Files/SmartGitHg/git/bin"
+    "C:/Program Files/SmartGit/git/bin"
+    "C:/Program Files (x86)/Git/bin"
+    "C:/Program Files/Git/bin")
+find_package(git)
+    
 if (NOT GIT_FOUND)
-    message(FATAL_ERROR "Git is required in the path, or you must set ")
+    message(FATAL_ERROR "Git is required in the path. If you have git or a tool that uses git installed, please file an issue with your path to git so it could be added to the default list to check.")
 endif ()
 
 EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} config cget.organizeAsSubModule OUTPUT_VARIABLE CGET_ORGANIZE_AS_SUBMODULES)
@@ -168,6 +176,10 @@ macro(CGET_NUGET_BUILD name version)
     file(GLOB_RECURSE INCLUDE_DIR LIST_DIRECTORIES true "${OUTPUTDIR}/*/include/")
 
     CGET_MESSAGE(2 "${name} nuget package provides ${DLLS} ${LIBS}")
+    if(NOT DLLS AND NOT LIBS)
+        message(FATAL_ERROR "Package ${name} doesn't provide any libraries, please check your configuration")
+    endif()
+    
     file(COPY ${DLLS} DESTINATION "${CGET_INSTALL_DIR}/bin")
     file(COPY ${LIBS} DESTINATION "${CGET_INSTALL_DIR}/lib")
 
@@ -176,7 +188,6 @@ macro(CGET_NUGET_BUILD name version)
             file(COPY ${DIR} DESTINATION "${CGET_INSTALL_DIR}/")
         ENDIF ()
     endforeach ()
-
 
     message("Getting ${OUTPUTDIR} ${INCLUDE_DIR}")
     set(NUGET_DIR "${OUTPUTDIR}/${name}.${CGET_NUGET_PATH_HINT}.${version}")
@@ -350,16 +361,17 @@ macro(CGET_BUILD_CMAKE name)
         endif ()
     endif ()
 
-    if (NOT DEFINED ARGS_OPTIONS_FILE)
-        SET(ARGS_OPTIONS_FILE ${CGET_BIN_DIR}/load.cmake)
-    endif ()
+    if(DEFINED ARGS_OPTIONS_FILE)
+        SET(USER_INCLUDE_FILE "-C${ARGS_OPTIONS_FILE}")
+    endif()
 
-    set(CMAKE_OPTIONS ${ARGS_OPTIONS}
-            -C${ARGS_OPTIONS_FILE}
-            -G${CMAKE_GENERATOR}
-            --no-warn-unused-cli
-            )
-
+  set(CMAKE_OPTIONS ${ARGS_OPTIONS}    
+	-C${CGET_BIN_DIR}/load.cmake
+	${USER_INCLUDE_FILE}
+    -G${CMAKE_GENERATOR}
+    --no-warn-unused-cli            
+    )
+    
     if (ARGS_PROXY)
         list(APPEND CMAKE_OPTIONS -DCGET_REQUESTED_VERSION=${CGET_REQUESTED_VERSION})
     endif ()
