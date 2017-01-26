@@ -51,6 +51,35 @@ Downloaded dependencies are cached in the `.cget-bin/` folder underneath your pr
 
 In the near future, you will also be able to configure a particular folder to act as the cget-bin for the current user; which saves time if you use multiple repos.
 
+## Command Reference
+
+* CGET_HAS_DEPENDENCY(name [options]) - Download, build, and ultimately call find_package with the given name. 
+
+Options can be specified in any order:
+
+### Flag Options
+
+* NO_FIND_PACKAGE - If present, performs every step but find_package. Can be useful if there is additional commands that need to be ran before find_package, a find cmake file doesn't exist, or you want to call find_package with custom options. 
+* REGISTRY - If present, the package is resolved from the cget registry with the name given to the dependency
+* NOSUBMODULES - By default, git repos will download sub modules. This disables that behavior. 
+
+### Single argument options
+
+* GITHUB [username/reponame] - Resolve the package at the given github repo
+* GIT [git-url] - Resolve the package at the given git repo
+* HG [hg-url] - Resolve the package at the given mercurial repo (WIP)
+* SVN [svn-url] - Resolve the package at the given SVN url (WIP)
+* NUGET_PACKAGE [pkg-name] - Resolve the package with nuget. Note that this works only on windows, if you want cross platform support you are advised to also include another resolution method. 
+* VERSION [version] - Resolve this specific version. Can be 
+* FINDNAME [altname] - Use this name when calling find_package
+* COMMIT_ID [hash] - Get this specific commit 
+* REGISTRY_VERSION - For registry packages, use this version of the registry repo
+
+### Multi-value arguments
+
+* OPTIONS - Calls build tool with these options. 
+* FIND_OPTIONS - Additional options to pass into find_package
+
 ## For Repo Maintainers
 
 Cget was written explicitly with out of the box functionality in mind -- it uses find_package internally, and attempts to leverage all of CMakes internal package management. 
