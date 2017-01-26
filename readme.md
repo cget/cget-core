@@ -74,6 +74,7 @@ Options can be specified in any order:
 * FINDNAME [altname] - Use this name when calling find_package
 * COMMIT_ID [hash] - Get this specific commit 
 * REGISTRY_VERSION - For registry packages, use this version of the registry repo
+* OPTIONS_FILE - Preloads the packages CMake file with this file. Useful mainly when you need to pass in options that require things with spaces; like paths -- cmake's list / string treatment mangles text into something you don't want most of the time. 
 
 ### Multi-value arguments
 
