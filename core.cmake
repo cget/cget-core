@@ -64,7 +64,7 @@ macro(CGET_EXECUTE_PROCESS)
 endmacro()
 
 if (NOT CGET_PACKAGE_DIR)
-    SET(CGET_PACKAGE_DIR ${CGET_BIN_DIR}/packages)
+    SET(CGET_PACKAGE_DIR ${CGET_BIN_DIR}packages)
 endif ()
 
 if (CGET_ORGANIZE_AS_SUBMODULES AND NOT EXISTS ${CGET_PACKAGE_DIR}/.git)
@@ -72,7 +72,7 @@ if (CGET_ORGANIZE_AS_SUBMODULES AND NOT EXISTS ${CGET_PACKAGE_DIR}/.git)
     CGET_EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} init WORKING_DIRECTORY ${CGET_PACKAGE_DIR})
 endif ()
 
-SET(CGET_INSTALL_DIR ${CGET_BIN_DIR}/install_root/${CMAKE_GENERATOR})
+SET(CGET_INSTALL_DIR ${CGET_BIN_DIR}install_root/${CMAKE_GENERATOR})
 
 set(CGET_BUILD_CONFIGS ${CMAKE_CONFIGURATION_TYPES})
 if (NOT CGET_BUILD_CONFIGS)
@@ -447,12 +447,24 @@ function(CGET_FORCE_BUILD name)
         if (NOT CGET_${name}_BUILT AND EXISTS ${REPO_DIR}/${config_variant})
             STRING(REPLACE " " " " CGET_INSTALL_DIR_SAFE "${CGET_INSTALL_DIR}")
 
-            CGET_EXECUTE_PROCESS(COMMAND ./${config_variant} --prefix="${CGET_INSTALL_DIR_SAFE}" ${ARGS_OPTIONS}
-                    WORKING_DIRECTORY ${REPO_DIR})
-            CGET_EXECUTE_PROCESS(COMMAND make
-                    WORKING_DIRECTORY ${REPO_DIR})
-            CGET_EXECUTE_PROCESS(COMMAND make install
-                    WORKING_DIRECTORY ${REPO_DIR})
+                # Some config variants can't deal with spaces
+            SET(TEMP_DIR "/tmp/cget/install_root")
+            SET(TEMP_SRC_DIR "/tmp/cget/${name}")
+
+            CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${TEMP_DIR}")
+            if(EXISTS "${TEMP_SRC_DIR}")
+                CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${TEMP_SRC_DIR}")
+            endif()
+            FILE(MAKE_DIRECTORY ${TEMP_DIR})
+
+            CGET_EXECUTE_PROCESS(COMMAND cp -R "${REPO_DIR}" "${TEMP_SRC_DIR}")
+
+            CGET_EXECUTE_PROCESS(COMMAND ./${config_variant} --prefix=${TEMP_DIR} ${ARGS_OPTIONS} WORKING_DIRECTORY ${TEMP_SRC_DIR})
+            CGET_EXECUTE_PROCESS(COMMAND make WORKING_DIRECTORY ${TEMP_SRC_DIR})
+            CGET_EXECUTE_PROCESS(COMMAND make install WORKING_DIRECTORY ${TEMP_SRC_DIR})
+
+            CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy_directory "${TEMP_DIR}" "${CGET_INSTALL_DIR}")
+
             set(CGET_${name}_BUILT 1)
         endif ()
     endforeach ()
