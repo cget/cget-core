@@ -458,7 +458,7 @@ function(CGET_FORCE_BUILD name)
         CGET_BUILD_CMAKE(${ARGV})
         set(CGET_${name}_BUILT 1)
     elseif (EXISTS ${REPO_DIR}/autogen.sh)
-        CGET_EXECUTE_PROCESS(COMMAND ./autogen.sh WORKING_DIRECTORY ${REPO_DIR})
+        CGET_EXECUTE_PROCESS(COMMAND ./autogen.sh ${ARGS_OPTIONS} WORKING_DIRECTORY ${REPO_DIR})
     endif ()
 
     foreach (config_variant configure config bootstrap)
