@@ -33,9 +33,9 @@ function(CGET_ADD_CUSTOM_TARGET name)
 endfunction()
 
 if (NOT DEFINED CGET_CORE_DIR)
-    set(CGET_CORE_DIR "${CMAKE_SOURCE_DIR}/")
+    set(CGET_CORE_DIR "${CMAKE_SOURCE_DIR}/")    
     set(CGET_IS_ROOT_DIR ON)
-
+        
     CGET_ADD_CUSTOM_TARGET(cget-clean-packages COMMAND ${CMAKE_COMMAND} -E remove_directory "${CGET_BIN_DIR}")
     CGET_ADD_CUSTOM_TARGET(cget-rebuild-packages COMMAND ${CMAKE_COMMAND} -E remove "${CGET_BIN_DIR}/packages/*/*/.built")
 endif ()
@@ -47,7 +47,10 @@ set(CGET_CORE_VERSION 0.1.5)
 
 if (NOT CGET_BIN_DIR)
     SET(CGET_BIN_DIR "${CMAKE_SOURCE_DIR}/.cget-bin/")
-
+    
+    SET(CGET_TEMP_DIR "${CGET_BIN_DIR}temp")    
+    EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${CGET_TEMP_DIR}")    
+    FILE(MAKE_DIRECTORY "${CGET_TEMP_DIR}")
 endif ()
 
 function(CGET_MESSAGE LVL)
@@ -65,7 +68,7 @@ macro(CGET_EXECUTE_PROCESS)
 endmacro()
 
 if (NOT CGET_PACKAGE_DIR)
-    SET(CGET_PACKAGE_DIR ${CGET_BIN_DIR}packages)
+    SET(CGET_PACKAGE_DIR ${CGET_BIN_DIR}packages)    
 endif ()
 
 if (CGET_ORGANIZE_AS_SUBMODULES AND NOT EXISTS ${CGET_PACKAGE_DIR}/.git)
@@ -161,6 +164,16 @@ FUNCTION(CGET_PREPEND_TO_LIST var prefix)
     SET(${var} "${listVar}" PARENT_SCOPE)
 ENDFUNCTION(CGET_PREPEND_TO_LIST)
 
+FUNCTION(CGET_ALL_FILENAME_COMPONENTS VAR FileNames COMP)
+    set(RTN "")
+    foreach(FileName ${FileNames})  
+        GET_FILENAME_COMPONENT(NAME "${FileName}" ${COMP})
+        list(APPEND RTN ${NAME})
+    endforeach()
+    set(${VAR} ${RTN} PARENT_SCOPE)
+ENDFUNCTION()
+    
+
 macro(CGET_NUGET_BUILD name version)
     CGET_MESSAGE(3 "CGET_NUGET_BUILD ${ARGV}")
     set(OUTPUTDIR ${CGET_INSTALL_DIR})
@@ -196,6 +209,12 @@ macro(CGET_NUGET_BUILD name version)
     file(GLOB_RECURSE LIBS "${OUTPUTDIR}" "${OUTPUTDIR}/*.lib")
     CGET_FILTER_INCOMPATIBLE(LIBS ${LIBTYPE})
 
+    CGET_FILTER_BY_RUNTIME(DLLS_DEBUG DLLS "DEBUG")
+    CGET_FILTER_BY_RUNTIME(DLLS_RELEASE DLLS "RELEASE")
+    
+    CGET_ALL_FILENAME_COMPONENTS(DLLS_DEBUG_NAMES "${DLLS_DEBUG}" NAME_WE)
+    CGET_ALL_FILENAME_COMPONENTS(DLLS_RELEASE_NAMES "${DLLS_RELEASE}" NAME_WE)
+    
     file(GLOB_RECURSE INCLUDE_DIR LIST_DIRECTORIES true "${OUTPUTDIR}/*/include/")
 
     CGET_MESSAGE(2 "${name} nuget package provides ${DLLS} ${LIBS}")
@@ -203,16 +222,36 @@ macro(CGET_NUGET_BUILD name version)
         message(FATAL_ERROR "Package ${name} doesn't provide any libraries, please check your configuration")
     endif()
     
-    file(COPY ${DLLS} DESTINATION "${CGET_INSTALL_DIR}/bin")
     file(COPY ${LIBS} DESTINATION "${CGET_INSTALL_DIR}/lib")
-
+    file(COPY ${DLLS_RELEASE} DESTINATION "${CGET_INSTALL_DIR}/bin")
+    
+    # For debug dlls, we have to make sure they don't have the exact same name       
+    foreach(DLL_DEBUG ${DLLS_DEBUG})
+    
+        GET_FILENAME_COMPONENT(DLL_DEBUG_NAME "${DLL_DEBUG}" NAME_WE)
+        LIST(FIND DLLS_RELEASE_NAMES ${DLL_DEBUG_NAME} IDX)                
+        if(NOT IDX EQUAL -1)
+        
+            # If they do, we rename the debug dll to use the 'd' suffix
+            GET_FILENAME_COMPONENT(DLL_DIR "${DLL_DEBUG}" DIRECTORY)
+            SET(NEWNAME "${CGET_INSTALL_DIR}/bin/${DLL_DEBUG_NAME}d.dll")
+            FILE(RENAME "${DLL_DEBUG}" "${NEWNAME}")
+            
+            # We have to regenerate the libs for both release and debug since the copy above let it in an indeterminate state
+            CGET_DLL2LIB("${NEWNAME}" "${CGET_INSTALL_DIR}/lib")
+            CGET_DLL2LIB("${CGET_INSTALL_DIR}/bin/${DLL_DEBUG_NAME}.dll" "${CGET_INSTALL_DIR}/lib")
+        else()
+            # No conflict! Just copy it
+            FILE(COPY "${DLL_DEBUG}" DESTINATION "${CGET_INSTALL_DIR}/bin")            
+        endif()
+    endforeach()
+            
     foreach (DIR ${INCLUDE_DIR})
         IF (DIR MATCHES ".*/include$")
             file(COPY ${DIR} DESTINATION "${CGET_INSTALL_DIR}/")
         ENDIF ()
     endforeach ()
 
-    message("Getting ${OUTPUTDIR} ${INCLUDE_DIR}")
     set(NUGET_DIR "${OUTPUTDIR}/${name}.${CGET_NUGET_PATH_HINT}.${version}")
     set(CGET_${name}_NUGET_DIR ${NUGET_DIR} CACHE STRING "" FORCE)
     set(LIB_DIR "${NUGET_DIR}/lib/native/${CGET_MSVC_RUNTIME}/windesktop/msvcstl/dyn/rt-dyn/${CGET_ARCH}/")
@@ -723,7 +762,6 @@ function(CGET_HAS_DEPENDENCY name)
         CGET_BUILD(${ARGV})
         file(WRITE "${BUILD_DIR}/.built" "${Build_Hash}")
     endif ()
-
 
     if (NOT ARGS_NO_FIND_PACKAGE)
         CGET_MESSAGE(13 "Finding ${name} with ${ARGS_CMAKE_VERSION} ${ARGS_FIND_OPTIONS} in ${CMAKE_PREFIX_PATH} ${CMAKE_LIBRARY_PATH} ${CMAKE_INCLUDE_PATH}")
