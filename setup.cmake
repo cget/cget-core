@@ -1,4 +1,3 @@
-
 cmake_policy(SET CMP0011 NEW)
 cmake_policy(SET CMP0012 NEW)
 
@@ -17,13 +16,16 @@ endif ()
 
 macro(CGET_GET_CONFIG name var)
     EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} config ${name} OUTPUT_VARIABLE ${var})
+    if(${VAR})
+        CGET_MESSAGE(2 "Using setting ${var} from git config: ${${var}}")
+    endif()
     STRING(STRIP "${${var}}" ${var})
 endmacro()
 
 CGET_GET_CONFIG(cget.organizeAsSubModule CGET_ORGANIZE_AS_SUBMODULES)
 CGET_GET_CONFIG(cget.useSSHForGithub CGET_USE_SSH_FOR_GITHUB)
 CGET_GET_CONFIG(cget.mirror CGET_CONFIG_MIRROR)
-CGET_GET_CONFIG(cget.sharedBinLocation CGET_BIN_DIR)
+CGET_GET_CONFIG(cget.sharedBinLocation CGET_SHARED_BIN_DIR)
 
 if(DEFINED CMAKE_SCRIPT_MODE_FILE)
     SET(CGET_IS_SCRIPT_MODE ON)
@@ -37,9 +39,6 @@ if (NOT DEFINED CGET_VERBOSE_LEVEL)
     set(CGET_VERBOSE_LEVEL 5)
 endif ()
 
-FILE(MD5 ${CGET_CORE_DIR}/.cget/core.cmake CGET_CORE_HASH)
-FILE(MD5 ${CGET_CORE_DIR}/.cget/core.cmake CGET_PACKAGE_HASH)
-
 set(CGET_CORE_VERSION 0.1.5)
 
 if (NOT DEFINED CGET_CORE_DIR)
@@ -50,9 +49,15 @@ if (NOT DEFINED CGET_CORE_DIR)
     CGET_ADD_CUSTOM_TARGET(cget-rebuild-packages COMMAND ${CMAKE_COMMAND} -E remove "${CGET_BIN_DIR}/packages/*/*/.built")
 endif ()
 
-if (NOT CGET_BIN_DIR)
-    SET(CGET_BIN_DIR "${CMAKE_SOURCE_DIR}/.cget-bin/")
+FILE(MD5 ${CGET_CORE_DIR}/.cget/core.cmake CGET_CORE_HASH)
+FILE(MD5 ${CGET_CORE_DIR}/.cget/core.cmake CGET_PACKAGE_HASH)
 
+if (NOT CGET_BIN_DIR)
+    if(CGET_SHARED_BIN_DIR)
+        SET(CGET_BIN_DIR "${CGET_SHARED_BIN_DIR}/")
+    else()
+        SET(CGET_BIN_DIR "${CMAKE_SOURCE_DIR}/.cget-bin/")
+    endif()
     SET(CGET_TEMP_DIR "${CGET_BIN_DIR}temp")
     EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${CGET_TEMP_DIR}")
     FILE(MAKE_DIRECTORY "${CGET_TEMP_DIR}")
@@ -61,7 +66,6 @@ endif ()
 if (NOT CGET_PACKAGE_DIR)
     SET(CGET_PACKAGE_DIR ${CGET_BIN_DIR}packages)
 endif ()
-
 
 if (CGET_ORGANIZE_AS_SUBMODULES AND NOT EXISTS "${CGET_CORE_DIR}/.cget/.added")
     EXECUTE_PROCESS(COMMAND git submodule add "${CGET_CORE_DIR}/.cget" WORKING_DIRECTORY ${CGET_CORE_DIR} OUTPUT_QUIET ERROR_QUIET )

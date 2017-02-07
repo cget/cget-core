@@ -8,7 +8,6 @@ if (MSVC OR MINGW)
   SET(CGET_STATIC_NUGET_PATH_HINT "${CGET_MSVC_RUNTIME}.windesktop.msvcstl.dyn.rt-static.${CGET_ARCH}")
 endif ()
 
-
 macro(CGET_NUGET_BUILD name version)
   CGET_MESSAGE(3 "CGET_NUGET_BUILD ${ARGV}")
   set(OUTPUTDIR ${CGET_INSTALL_DIR})
