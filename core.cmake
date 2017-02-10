@@ -725,7 +725,7 @@ function(CGET_FIND_DEPENDENCY)
 	elseif(ARGS_LIBRARY)
 		find_library(${ARGN})
 	else()
-        find_package(${ARGN})
+        find_package(${ARGS_FINDNAME})
 	endif()
 endfunction()
 
