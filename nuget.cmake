@@ -8,49 +8,9 @@ if (MSVC)
   SET(CGET_STATIC_NUGET_PATH_HINT "${CGET_MSVC_RUNTIME}.windesktop.msvcstl.dyn.rt-static.${CGET_ARCH}")
 endif ()
 
-macro(CGET_NUGET_BUILD name version)
-  CGET_MESSAGE(3 "CGET_NUGET_BUILD ${ARGV}")
-  set(OUTPUTDIR ${CGET_INSTALL_DIR})
-  if (REPO_DIR)
-    set(OUTPUTDIR ${REPO_DIR})
-  endif ()
-  set(VERSION_SPEC "")
-  if (version)
-    set(VERSION_SPEC "-version ${version}")
-  endif ()
-  set(searchsuffix ${ARGN})
-  if (NOT CGET_NUGET OR NOT EXISTS "${CGET_NUGET}")
-    cget_message(2 "Nuget path ${CGET_NUGET}")
-    set(CGET_NUGET)
-    find_program(CGET_NUGET nuget HINTS "${CGET_BIN_DIR}/extras")
-    if (NOT CGET_NUGET OR NOT EXISTS "${CGET_NUGET}")
-	  FILE(MAKE_DIRECTORY "${CGET_BIN_DIR}/extras")
-      file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v3.5.0/nuget.exe "${CGET_BIN_DIR}/extras/nuget.exe" 
-	  EXPECTED_MD5 406324e1744923a530a3f45b8e4fe1eb  STATUS status LOG log)
-	    
-		list(GET status 0 status_code) 
-		list(GET status 1 status_string) 
-
-		if(NOT status_code EQUAL 0) 
-		  file(REMOVE "${CGET_BIN_DIR}/extras/nuget.exe")
-		  message(FATAL_ERROR "error: downloading 'nuget' failed 
-		  status_code: ${status_code} 
-		  status_string: ${status_string} 
-		  log: ${log}") 
-		endif() 
-	  
-      find_program(CGET_NUGET nuget REQUIRED HINTS "${CGET_BIN_DIR}/extras")
-    endif ()
-  endif ()
-  CGET_EXECUTE_PROCESS(COMMAND ${CGET_NUGET} install ${name}${searchsuffix} ${VERSION_SPEC} -outputdirectory "${OUTPUTDIR}")
-
+macro(CGET_GET_LIBS_FROM_DIR OUTPUTDIR LIBTYPE)
   CGET_HAS_DEPENDENCY(file-type-utils GITHUB cget/file-type-utils VERSION master)
-
-  SET(LIBTYPE "SHARED_LIBRARY")
-  IF(ARGS_NUGET_USE_STATIC)
-    SET(LIBTYPE "STATIC_LIBRARY")
-  endif()
-
+  
   file(GLOB_RECURSE DLLS "${OUTPUTDIR}" "${OUTPUTDIR}/*.dll")
   CGET_FILTER_INCOMPATIBLE(DLLS ${LIBTYPE})
 
@@ -99,6 +59,50 @@ macro(CGET_NUGET_BUILD name version)
       file(COPY ${DIR} DESTINATION "${CGET_INSTALL_DIR}/")
     ENDIF ()
   endforeach ()
+endmacro()
+
+macro(CGET_NUGET_BUILD name version)
+  CGET_MESSAGE(3 "CGET_NUGET_BUILD ${ARGV}")
+  set(OUTPUTDIR ${CGET_INSTALL_DIR})
+  if (REPO_DIR)
+    set(OUTPUTDIR ${REPO_DIR})
+  endif ()
+  set(VERSION_SPEC "")
+  if (version)
+    set(VERSION_SPEC "-version ${version}")
+  endif ()
+  set(searchsuffix ${ARGN})
+  if (NOT CGET_NUGET OR NOT EXISTS "${CGET_NUGET}")
+    cget_message(2 "Nuget path ${CGET_NUGET}")
+    set(CGET_NUGET)
+    find_program(CGET_NUGET nuget HINTS "${CGET_BIN_DIR}/extras")
+    if (NOT CGET_NUGET OR NOT EXISTS "${CGET_NUGET}")
+	  FILE(MAKE_DIRECTORY "${CGET_BIN_DIR}/extras")
+      file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v3.5.0/nuget.exe "${CGET_BIN_DIR}/extras/nuget.exe" 
+	  EXPECTED_MD5 406324e1744923a530a3f45b8e4fe1eb  STATUS status LOG log)
+	    
+		list(GET status 0 status_code) 
+		list(GET status 1 status_string) 
+
+		if(NOT status_code EQUAL 0) 
+		  file(REMOVE "${CGET_BIN_DIR}/extras/nuget.exe")
+		  message(FATAL_ERROR "error: downloading 'nuget' failed 
+		  status_code: ${status_code} 
+		  status_string: ${status_string} 
+		  log: ${log}") 
+		endif() 
+	  
+      find_program(CGET_NUGET nuget REQUIRED HINTS "${CGET_BIN_DIR}/extras")
+    endif ()
+  endif ()
+  CGET_EXECUTE_PROCESS(COMMAND ${CGET_NUGET} install ${name}${searchsuffix} ${VERSION_SPEC} -outputdirectory "${OUTPUTDIR}")
+
+  SET(LIBTYPE "SHARED_LIBRARY")
+  IF(ARGS_NUGET_USE_STATIC)
+    SET(LIBTYPE "STATIC_LIBRARY")
+  endif()
+
+  CGET_GET_LIBS_FROM_DIR("${OUTPUTDIR}" ${LIBTYPE})
 
   set(NUGET_DIR "${OUTPUTDIR}/${name}.${CGET_NUGET_PATH_HINT}.${version}")
   set(CGET_${name}_NUGET_DIR ${NUGET_DIR} CACHE STRING "" FORCE)
