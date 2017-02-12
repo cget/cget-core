@@ -6,7 +6,7 @@ endfunction()
 
 function(CGET_MESSAGE LVL)
     if (NOT CGET_VERBOSE_LEVEL LESS LVL)
-        message("cget: ${ARGN}")
+        message("cget(${CGET_CURRENT_CHAIN}): ${ARGN}")
     endif ()
 endfunction()
 

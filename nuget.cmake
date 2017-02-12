@@ -1,8 +1,8 @@
 
-if (MSVC OR MINGW)
+if (MSVC)
   SET(CGET_MSVC_RUNTIME "${CMAKE_VS_PLATFORM_TOOLSET}")
   if (NOT CGET_MSVC_RUNTIME)
-    MESSAGE(FATAL_ERROR " Generator not recognized ${CMAKE_GENERATOR}")
+    MESSAGE(FATAL_ERROR " Generator not recognized ${CMAKE_GENERATOR} (${CMAKE_VS_PLATFORM_TOOLSET}")
   endif ()
   SET(CGET_DYN_NUGET_PATH_HINT "${CGET_MSVC_RUNTIME}.windesktop.msvcstl.dyn.rt-dyn.${CGET_ARCH}")
   SET(CGET_STATIC_NUGET_PATH_HINT "${CGET_MSVC_RUNTIME}.windesktop.msvcstl.dyn.rt-static.${CGET_ARCH}")
@@ -67,13 +67,13 @@ macro(CGET_NUGET_BUILD name version)
     if(NOT IDX EQUAL -1)
 
       # If they do, we rename the debug dll to use the 'd' suffix
-      GET_FILENAME_COMPONENT(DLL_DIR "${DLL_DEBUG}" DIRECTORY)
-      SET(NEWNAME "${CGET_INSTALL_DIR}/bin/${DLL_DEBUG_NAME}d.dll")
-      FILE(RENAME "${DLL_DEBUG}" "${NEWNAME}")
+      #GET_FILENAME_COMPONENT(DLL_DIR "${DLL_DEBUG}" DIRECTORY)
+      #SET(NEWNAME "${CGET_INSTALL_DIR}/bin/${DLL_DEBUG_NAME}d.dll")
+      #FILE(RENAME "${DLL_DEBUG}" "${NEWNAME}")
 
       # We have to regenerate the libs for both release and debug since the copy above let it in an indeterminate state
-      CGET_DLL2LIB("${NEWNAME}" "${CGET_INSTALL_DIR}/lib")
-      CGET_DLL2LIB("${CGET_INSTALL_DIR}/bin/${DLL_DEBUG_NAME}.dll" "${CGET_INSTALL_DIR}/lib")
+      #CGET_DLL2LIB("${NEWNAME}" "${CGET_INSTALL_DIR}/lib")
+      #CGET_DLL2LIB("${CGET_INSTALL_DIR}/bin/${DLL_DEBUG_NAME}.dll" "${CGET_INSTALL_DIR}/lib")
     else()
       # No conflict! Just copy it
       FILE(COPY "${DLL_DEBUG}" DESTINATION "${CGET_INSTALL_DIR}/bin")
