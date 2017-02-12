@@ -22,11 +22,24 @@ macro(CGET_NUGET_BUILD name version)
   if (NOT CGET_NUGET OR NOT EXISTS "${CGET_NUGET}")
     cget_message(2 "Nuget path ${CGET_NUGET}")
     set(CGET_NUGET)
-    find_program(CGET_NUGET nuget HINTS "${CGET_INSTALL_DIR}/extras")
+    find_program(CGET_NUGET nuget HINTS "${CGET_BIN_DIR}/extras")
     if (NOT CGET_NUGET OR NOT EXISTS "${CGET_NUGET}")
-	  FILE(MAKE_DIRECTORY "${CGET_INSTALL_DIR}/extras")
-      file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v3.5.0/nuget.exe "${CGET_INSTALL_DIR}/extras/nuget.exe" EXPECTED_MD5 406324e1744923a530a3f45b8e4fe1eb)
-      find_program(CGET_NUGET nuget REQUIRED HINTS "${CGET_INSTALL_DIR}/extras")
+	  FILE(MAKE_DIRECTORY "${CGET_BIN_DIR}/extras")
+      file(DOWNLOAD https://dist.nuget.org/win-x86-commandline/v3.5.0/nuget.exe "${CGET_BIN_DIR}/extras/nuget.exe" 
+	  EXPECTED_MD5 406324e1744923a530a3f45b8e4fe1eb  STATUS status LOG log)
+	    
+		list(GET status 0 status_code) 
+		list(GET status 1 status_string) 
+
+		if(NOT status_code EQUAL 0) 
+		  file(REMOVE "${CGET_BIN_DIR}/extras/nuget.exe")
+		  message(FATAL_ERROR "error: downloading 'nuget' failed 
+		  status_code: ${status_code} 
+		  status_string: ${status_string} 
+		  log: ${log}") 
+		endif() 
+	  
+      find_program(CGET_NUGET nuget REQUIRED HINTS "${CGET_BIN_DIR}/extras")
     endif ()
   endif ()
   CGET_EXECUTE_PROCESS(COMMAND ${CGET_NUGET} install ${name}${searchsuffix} ${VERSION_SPEC} -outputdirectory "${OUTPUTDIR}")

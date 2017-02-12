@@ -4,7 +4,7 @@ if(NOT CGET_CORE_DIR)
     set(CGET_IS_ROOT_DIR TRUE)
     set(CGET_CORE_DIR "${CMAKE_SOURCE_DIR}")
 endif()
-
+set_property( GLOBAL PROPERTY USE_FOLDERS ON)
 include("${CGET_CORE_DIR}/.cget/cget_utilities.cmake" REQUIRED)
 include("${CGET_CORE_DIR}/.cget/setup.cmake" REQUIRED)
 include("${CGET_CORE_DIR}/.cget/nuget.cmake" REQUIRED)
