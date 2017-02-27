@@ -121,7 +121,7 @@ macro(CGET_PARSE_OPTIONS name)
         if (CGET_USE_SSH_FOR_GITHUB)
             set(ARGS_GIT "git@github.com:${ARGS_GITHUB}")
         else ()
-            set(ARGS_GIT "http://github.com/${ARGS_GITHUB}")
+            set(ARGS_GIT "https://github.com/${ARGS_GITHUB}.git")
         endif ()
     endif ()
 
@@ -395,7 +395,7 @@ function(CGET_DIRECT_GET_PACKAGE name)
                 set(_GIT_OPTIONS --progress --branch=${CHECKOUT_TAG} --depth=1)
             endif ()
 
-            CGET_EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} clone ${ARGS_GIT} ${STAGING_DIR} ${_GIT_OPTIONS} ${GIT_SUBMODULE_OPTIONS} OUTPUT_QUIET ERROR_QUIET)
+            CGET_EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} clone ${ARGS_GIT} ${STAGING_DIR} ${_GIT_OPTIONS} ${GIT_SUBMODULE_OPTIONS})
 
             if (ARGS_COMMIT_ID)
                 CGET_EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} checkout ${ARGS_COMMIT_ID}
