@@ -1,6 +1,11 @@
 if (MSVC)
   SET(CGET_MSVC_RUNTIME "${CMAKE_VS_PLATFORM_TOOLSET}")
   if (NOT CGET_MSVC_RUNTIME)
+    # As far as I know, this implies NMake makefiles
+    STRING(REPLACE "." "" "VisualStudioVersion_no_period" "$ENV{VisualStudioVersion}" )
+    SET(CGET_MSVC_RUNTIME "v${VisualStudioVersion_no_period}")
+  endif()
+  if (NOT CGET_MSVC_RUNTIME)
     MESSAGE(FATAL_ERROR " Generator not recognized ${CMAKE_GENERATOR} (${CMAKE_VS_PLATFORM_TOOLSET}")
   endif ()
   SET(CGET_DYN_NUGET_PATH_HINT "${CGET_MSVC_RUNTIME}.windesktop.msvcstl.dyn.rt-dyn.${CGET_ARCH}")
