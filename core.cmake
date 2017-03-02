@@ -30,7 +30,8 @@ function(CGET_WRITE_CGET_SETTINGS_FILE)
 					 CGET_PACKAGE_DIR CGET_INSTALL_DIR CGET_CORE_DIR CMAKE_FIND_ROOT_PATH CMAKE_PREFIX_PATH 
 					BUILD_SHARED_LIBS CMAKE_FIND_LIBRARY_SUFFIXES CGET_BUILD_CONFIGS)
         if (DEFINED ${varname})
-            set(WRITE_STR "${WRITE_STR}SET(${varname} \t\"${${varname}}\" CACHE STRING \"\")\n")
+            STRING(REPLACE "\\" "/" varvalue "${${varname}}")
+            set(WRITE_STR "${WRITE_STR}SET(${varname} \t\"${varvalue}\" CACHE STRING \"\")\n")
         endif ()
     endforeach ()
 
