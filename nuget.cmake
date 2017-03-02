@@ -43,7 +43,9 @@ macro(CGET_GET_LIBS_FROM_DIR OUTPUTDIR LIBTYPE)
 
   file(GLOB_RECURSE INCLUDE_DIR LIST_DIRECTORIES true "${OUTPUTDIR}/*/include/")
 
-  CGET_MESSAGE(2 "${name} nuget package provides ${DLLS} ${LIBS}")
+  CGET_MESSAGE(2 "${name} nuget package provides Release ${DLLS_RELEASE}")
+  CGET_MESSAGE(2 "${name} nuget package provides Debug ${DLLS_DEBUG}")
+  CGET_MESSAGE(2 "${name} nuget package provides Libs ${LIBS}")
   if(NOT DLLS AND NOT LIBS)
     message(FATAL_ERROR "Package ${name} doesn't provide any libraries, please check your configuration")
   endif()
@@ -69,6 +71,7 @@ macro(CGET_GET_LIBS_FROM_DIR OUTPUTDIR LIBTYPE)
     else()
       # No conflict! Just copy it
       FILE(COPY "${DLL_DEBUG}" DESTINATION "${CGET_INSTALL_DIR}/bin")
+      CGET_MESSAGE(2 "Providing ${DLL_DEBUG} since it doesn't clash with a release binary")
     endif()
   endforeach()
 
