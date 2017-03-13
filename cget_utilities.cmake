@@ -12,9 +12,9 @@ endfunction()
 
 macro(CGET_EXECUTE_PROCESS)
     CGET_MESSAGE(3 "Running exec process: ${ARGN}")
-    execute_process(${ARGN} RESULT_VARIABLE EXECUTE_RESULT ERROR_VARIABLE ERROR_RESULT OUTPUT_VARIABLE OUTPUT)
+    execute_process(${ARGN} RESULT_VARIABLE EXECUTE_RESULT ERROR_VARIABLE ERROR_RESULT)
     if (EXECUTE_RESULT)
-        message(FATAL_ERROR "Execute process '${ARGN}' failed with '${EXECUTE_RESULT}', result: ${RESULT_VARIABLE} ${OUTPUT} ${ERROR_RESULT}")
+        message(FATAL_ERROR "Execute process '${ARGN}' failed with '${EXECUTE_RESULT}', result: ${RESULT_VARIABLE} ${ERROR_RESULT}")
     endif ()
 endmacro()
 
