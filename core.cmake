@@ -265,12 +265,11 @@ macro(CGET_BUILD_CMAKE name)
             CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} --build . --target install --config Release WORKING_DIRECTORY "${RELEASE_BUILD_DIR}")
         endif ()
     else ()
-
         # Set up the packages
         CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} ${CMAKE_OPTIONS} ${CMAKE_ROOT} WORKING_DIRECTORY ${BUILD_DIR})
 
         # Do a build for reach configuration
-        CGET_MESSAGE(1 "Building ${CGET_BUILD_CONFIGS}")
+        CGET_MESSAGE(1 "Building ${CGET_BUILD_CONFIGS} (${CMAKE_BUILD_TYPE})")
         foreach (configuration ${CGET_BUILD_CONFIGS})
             CGET_MESSAGE(2 " ${CMAKE_COMMAND} --build . --target install --config ${configuration} WORKING_DIRECTORY ${BUILD_DIR}")
             CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} --build . --target install --config ${configuration} WORKING_DIRECTORY ${BUILD_DIR})
