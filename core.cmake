@@ -164,7 +164,9 @@ macro(CGET_PARSE_OPTIONS name)
     endif ()
 
     set(REPO_DIR "${CGET_PACKAGE_DIR}/${name}_${REPO_DIR_SUFFIX}")
+
     set(INSTALL_DIR "${CGET_INSTALL_DIR}/${name}_${REPO_DIR_SUFFIX}/${Build_Hash}")
+
     set(BUILD_DIR "${REPO_DIR}/${REL_BUILD_DIR}")
     if (DEFINED RELEASE_REL_BUILD_DIR)
         set(RELEASE_BUILD_DIR "${REPO_DIR}/${RELEASE_REL_BUILD_DIR}")
