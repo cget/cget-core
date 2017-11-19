@@ -1,9 +1,10 @@
 include(CMakeParseArguments)
 
 if(NOT CGET_CORE_DIR)
-    set(CGET_IS_ROOT_DIR TRUE)    
-    set(CGET_CORE_DIR "${CMAKE_SOURCE_DIR}/")
+  set(CGET_IS_ROOT_DIR TRUE)    
+  set(CGET_CORE_DIR "${CMAKE_SOURCE_DIR}/")
 endif()
+  
 set_property( GLOBAL PROPERTY USE_FOLDERS ON)
 include("${CGET_CORE_DIR}/.cget/cget_utilities.cmake" REQUIRED)
 include("${CGET_CORE_DIR}/.cget/setup.cmake" REQUIRED)
@@ -18,14 +19,26 @@ CGET_MESSAGE(13 "Install dir: ${CGET_INSTALL_DIR}")
 CGET_MESSAGE(13 "Bin dir: ${CGET_BIN_DIR}")
 CGET_MESSAGE(13 "Bin dir: ${CGET_CORE_DIR}")
 
-if (NOT CGET_IS_SCRIPT_MODE)
-    include_directories("${CGET_INSTALL_DIR}/include")
-    link_directories("${CGET_INSTALL_DIR}" "${CMAKE_LIBRARY_PATH}")
-endif ()
+macro(CGET_REGISTER_INSTALL_DIR INSTALL_DIR)
+  if (EXISTS ${INSTALL_DIR})
+    if (NOT CGET_IS_SCRIPT_MODE)
+      include_directories("${INSTALL_DIR}/include")
+      link_directories("${INSTALL_DIR}")
+
+      FILE(MAKE_DIRECTORY ${INSTALL_DIR}/lib/cmake)
+      list(APPEND CMAKE_FIND_ROOT_PATH ${INSTALL_DIR})
+      list(APPEND CMAKE_PREFIX_PATH ${INSTALL_DIR} ${INSTALL_DIR}/lib/cmake)
+      list(APPEND CMAKE_MODULE_PATH ${INSTALL_DIR}/lib/cmake)
+      list(APPEND CMAKE_LIBRARY_PATH ${INSTALL_DIR}/lib)
+
+      file(APPEND "${CMAKE_BINARY_DIR}/cget-usages" "${INSTALL_DIR}\n")      
+    endif()
+  endif()
+endmacro()
+
+#CGET_REGISTER_INSTALL_DIR("${CGET_INSTALL_DIR}")
 
 function(CGET_WRITE_CGET_SETTINGS_FILE)
-    set(WRITE_STR "SET(CMAKE_INSTALL_PREFIX \t\"${CGET_INSTALL_DIR}\" CACHE PATH \"\")\n")
-
     foreach (varname CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH CGET_BIN_DIR CMAKE_CONFIGURATION_TYPES CMAKE_INSTALL_RPATH 
 					 CGET_PACKAGE_DIR CGET_INSTALL_DIR CGET_CORE_DIR CMAKE_FIND_ROOT_PATH CMAKE_PREFIX_PATH 
 					BUILD_SHARED_LIBS CMAKE_FIND_LIBRARY_SUFFIXES CGET_BUILD_CONFIGS)
@@ -49,7 +62,10 @@ function(CGET_WRITE_CGET_SETTINGS_FILE)
 endfunction()
 
 if (CGET_IS_ROOT_DIR)
-    CGET_WRITE_CGET_SETTINGS_FILE()
+  CGET_WRITE_CGET_SETTINGS_FILE()  
+  CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove "${CMAKE_BINARY_DIR}/cget-usages")
+  STRING(MD5 CMAKE_BINARY_DIR_HASH "${CMAKE_BINARY_DIR}")
+  FILE(WRITE "${CGET_BIN_DIR}/cget-used-from/${CMAKE_BINARY_DIR_HASH}" "${CMAKE_BINARY_DIR}")
 endif ()
 
 function(CGET_NORMALIZE_CMAKE_FILES DIR SUFFIX NEW_SUFFIX)
@@ -129,7 +145,7 @@ macro(CGET_PARSE_OPTIONS name)
     endif ()
 
     string(MD5 Repo_Hash "${name} ${ARGS_GIT} ${ARGS_VERSION} ${NOSUBMODULES} ${ARGS_COMMIT_ID} ${ARGS_REGISTRY_VERSION}")
-    string(MD5 Build_Hash "${name} ${ARGS_OPTIONS} ${ARGS_NOSUBMODULES} ${CGET_BUILD_CONFIGS} ${CGET_CORE_VERSION} ${ARGS_NUGET_PACKAGE} ${ARGS_NUGET_USE_STATIC} ${ARGS_NUGET_VERSION} ${ARGS_BREW_PACKAGE}")
+    string(MD5 Build_Hash "${name} ${ARGS_OPTIONS} ${ARGS_NOSUBMODULES} ${CGET_BUILD_CONFIGS} ${CGET_CORE_VERSION} ${ARGS_NUGET_PACKAGE} ${ARGS_NUGET_USE_STATIC} ${ARGS_NUGET_VERSION} ${ARGS_BREW_PACKAGE}  ${ARGS_VERSION} ${ARGS_COMMIT_ID} ${ARGS_REGISTRY_VERSION}")
 
     SET(CHECKOUT_TAG "${ARGS_VERSION}")
     if (ARGS_PROXY)
@@ -148,6 +164,7 @@ macro(CGET_PARSE_OPTIONS name)
     endif ()
 
     set(REPO_DIR "${CGET_PACKAGE_DIR}/${name}_${REPO_DIR_SUFFIX}")
+    set(INSTALL_DIR "${CGET_INSTALL_DIR}/${name}_${REPO_DIR_SUFFIX}/${Build_Hash}")
     set(BUILD_DIR "${REPO_DIR}/${REL_BUILD_DIR}")
     if (DEFINED RELEASE_REL_BUILD_DIR)
         set(RELEASE_BUILD_DIR "${REPO_DIR}/${RELEASE_REL_BUILD_DIR}")
@@ -155,6 +172,7 @@ macro(CGET_PARSE_OPTIONS name)
     if (NOT ARGS_PROXY)
         set(CGET_${name}_REPO_DIR "${REPO_DIR}" CACHE STRING "" FORCE)
         set(CGET_${name}_BUILD_DIR "${BUILD_DIR}" CACHE STRING "" FORCE)
+	set(CGET_${name}_INSTALL_DIR "${INSTALL_DIR}" CACHE STRING "" FORCE)
     endif ()
 
     if (ARGS_SUBMODULE)
@@ -190,6 +208,7 @@ macro(CGET_PARSE_OPTIONS name)
         CGET_MESSAGE(2 "FIND_OPTIONS: ${ARGS_OPTIONS} COMPONENETS ${ARGS_COMPONENTS}")
         CGET_MESSAGE(2 "FIND VERSION: ${ARGS_CMAKE_VERSION}")
         CGET_MESSAGE(2 "REPO_DIR: ${REPO_DIR} ${ARGS_CMAKE_PATH}")
+	CGET_MESSAGE(2 "INSTALL_DIR: ${INSTALL_DIR}")
         CGET_MESSAGE(2 "BUILD_DIR: ${BUILD_DIR}")
         CGET_MESSAGE(2 "RELEASE_BUILD_DIR: ${RELEASE_BUILD_DIR}")
         CGET_MESSAGE(2 "CMAKE_CONFIGURATION_TYPES: ${CMAKE_CONFIGURATION_TYPES}")
@@ -239,6 +258,7 @@ macro(CGET_BUILD_CMAKE name)
             -C${CGET_BIN_DIR}/load.cmake
             ${USER_INCLUDE_FILE}
             -G${CMAKE_GENERATOR}
+	    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
             --no-warn-unused-cli
             )
 
@@ -312,12 +332,10 @@ function(CGET_FORCE_BUILD name)
         set(CGET_${name}_BUILT 1)
     elseif (EXISTS ${REPO_DIR}/autogen.sh)
         CGET_EXECUTE_PROCESS(COMMAND ./autogen.sh ${ARGS_OPTIONS} WORKING_DIRECTORY ${REPO_DIR})
-    endif ()
-
+      endif ()
+          
     foreach (config_variant configure config bootstrap)
         if (NOT CGET_${name}_BUILT AND EXISTS ${REPO_DIR}/${config_variant})
-            STRING(REPLACE " " " " CGET_INSTALL_DIR_SAFE "${CGET_INSTALL_DIR}")
-
             # Some config variants can't deal with spaces
             SET(TEMP_DIR "/tmp/cget/install_root")
             SET(TEMP_SRC_DIR "/tmp/cget/${name}")
@@ -334,7 +352,7 @@ function(CGET_FORCE_BUILD name)
             CGET_EXECUTE_PROCESS(COMMAND make WORKING_DIRECTORY ${TEMP_SRC_DIR})
             CGET_EXECUTE_PROCESS(COMMAND make install WORKING_DIRECTORY ${TEMP_SRC_DIR})
 
-            CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy_directory "${TEMP_DIR}" "${CGET_INSTALL_DIR}")
+            CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy_directory "${TEMP_DIR}" "${INSTALL_DIR}")
 
             set(CGET_${name}_BUILT 1)
         endif ()
@@ -350,20 +368,24 @@ endfunction(CGET_FORCE_BUILD)
 
 function(CGET_BUILD)
     CGET_PARSE_OPTIONS(${ARGV})
-    CGET_FILE_CONTENTS("${BUILD_DIR}/.built" BUILD_CACHE_VAL)
+    CGET_FILE_CONTENTS("${INSTALL_DIR}/.installed" BUILD_CACHE_VAL)
 
     if (ARGS_SIMPLE_BUILD OR NOT BUILD_CACHE_VAL STREQUAL Build_Hash)
-        CGET_MESSAGE(3 "Build out of date ${BUILD_CACHE_VAL} vs ${Build_Hash}")
-        if(CGET_CONFIG_FORCE_FULL_REBUILD)
-            CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${BUILD_DIR}")
-            IF (DEFINED RELEASE_BUILD_DIR)
-                CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${RELEASE_BUILD_DIR}")
-            ENDIF ()
-        endif()
-        CGET_FORCE_BUILD(${ARGV})
-        CGET_MESSAGE(3 "Update build file ${BUILD_DIR}/.built to ${Build_Hash}")
-        file(WRITE "${BUILD_DIR}/.built" "${Build_Hash}")
-    endif ()
+      CGET_MESSAGE(3 "Build out of date ${BUILD_CACHE_VAL} vs ${Build_Hash}")
+      if(CGET_CONFIG_FORCE_FULL_REBUILD)
+        CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${BUILD_DIR}")
+        IF (DEFINED RELEASE_BUILD_DIR)
+          CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${RELEASE_BUILD_DIR}")
+        ENDIF ()
+      endif()
+      CGET_FORCE_BUILD(${ARGV})
+      CGET_MESSAGE(3 "Update build file ${INSTALL_DIR}/.installed to ${Build_Hash}")
+
+      IF(EXISTS "${INSTALL_DIR}")
+	file(WRITE "${INSTALL_DIR}/.installed" "${Build_Hash}")
+	file(WRITE "${INSTALL_DIR}/.options" "${ARGV}")
+      ENDIF()
+    endif ()    
 endfunction()
 
 function(CGET_DIRECT_GET_PACKAGE name)
@@ -499,6 +521,7 @@ endfunction()
 function(CGET_HAS_DEPENDENCY name)
     CGET_PARSE_OPTIONS(${ARGV})
 
+    
     LIST(APPEND CGET_CURRENT_CHAIN "${name}-${ARGS_VERSION}")
     CGET_MESSAGE(15 "CGET_HAS_DEPENDENCY ${ARGV}")
     CGET_MESSAGE(12 "Package ${name}(tag: '${CHECKOUT_TAG}') checkout to ${REPO_DIR}, building in ${BUILD_DIR}")
@@ -510,25 +533,33 @@ function(CGET_HAS_DEPENDENCY name)
         ENDIF ()
     endif ()
 
-    CGET_GET_PACKAGE(${ARGV})
-
-    CGET_FILE_CONTENTS("${BUILD_DIR}/.built" BUILD_CACHE_VAL)
+    # Check if there is already an installed dir with the correct hash.
+    # if there is, we don't need to checkout the repo or attempt a build
+    # on it. 
+    CGET_FILE_CONTENTS("${INSTALL_DIR}/.installed" BUILD_CACHE_VAL)
     CGET_MESSAGE(15 "Build status ${BUILD_CACHE_VAL} vs ${Build_Hash}")
-    if (EXISTS "${REPO_DIR}/include.cmake")
+    if(ARGS_SIMPLE_BUILD OR NOT BUILD_CACHE_VAL STREQUAL Build_Hash)
+      CGET_GET_PACKAGE(${ARGV})
+
+      # The include.cmake just gets included and we don't try anything else
+      # since specialized instructions exist in that file
+      if (EXISTS "${REPO_DIR}/include.cmake")
         set(ARGS_NO_FIND_PACKAGE ON)
         CGET_MESSAGE(13 "Including ${REPO_DIR}/include.cmake")
         include("${REPO_DIR}/include.cmake")
-    elseif (ARGS_SIMPLE_BUILD OR NOT BUILD_CACHE_VAL STREQUAL Build_Hash)
+      else()
         CGET_MESSAGE(3 "Build out of date ${BUILD_CACHE_VAL} vs ${Build_Hash} Full build: ${CGET_CONFIG_FORCE_FULL_REBUILD}")
         if(CGET_CONFIG_FORCE_FULL_REBUILD)
-            CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${BUILD_DIR}")
-            IF (DEFINED RELEASE_BUILD_DIR)
-                CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${RELEASE_BUILD_DIR}")
-            ENDIF ()
+          CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${BUILD_DIR}")
+          IF (DEFINED RELEASE_BUILD_DIR)
+            CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${RELEASE_BUILD_DIR}")
+          ENDIF ()
         endif()
+	
         CGET_BUILD(${ARGV})
-        file(WRITE "${BUILD_DIR}/.built" "${Build_Hash}")
+      endif ()
     endif ()
+    CGET_REGISTER_INSTALL_DIR("${INSTALL_DIR}")
 
     if (NOT ARGS_NO_FIND_PACKAGE)
         CGET_MESSAGE(13 "Finding ${name} with ${ARGS_CMAKE_VERSION} ${ARGS_FIND_OPTIONS} in ${CMAKE_PREFIX_PATH} ${CMAKE_LIBRARY_PATH} ${CMAKE_INCLUDE_PATH}")
