@@ -39,7 +39,7 @@ CGET_GET_CONFIG(cget.organizeAsSubModule CGET_CONFIG_ORGANIZE_AS_SUBMODULES ON B
 CGET_GET_CONFIG(cget.useSSHForGithub CGET_CONFIG_USE_SSH_FOR_GITHUB OFF BOOL "Setup github packages for ssh access")
 CGET_GET_CONFIG(cget.mirror CGET_CONFIG_MIRROR "" PATH "")
 CGET_GET_CONFIG(cget.sharedBinLocation CGET_CONFIG_SHARED_BIN_DIR "${CGET_CONFIG_SHARED_BIN_DIR_DEFAULT}" PATH "Use given directory to store all projects .cget-bin")
-CGET_GET_CONFIG(cget.verbose CGET_CONFIG_VERBOSE_LEVEL "5" STRING "Verbosity 0-100. Higher emits more messages")
+CGET_GET_CONFIG(cget.verbose CGET_VERBOSE_LEVEL "5" STRING "Verbosity 0-100. Higher emits more messages")
 CGET_GET_CONFIG(cget.forceFullRebuild CGET_CONFIG_FORCE_FULL_REBUILD "TRUE" BOOL "Set to false to allow partial rebuilds")
 
 if(DEFINED CMAKE_SCRIPT_MODE_FILE)
