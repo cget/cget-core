@@ -38,7 +38,7 @@ macro(CGET_REGISTER_INSTALL_DIR INSTALL_DIR)
       foreach (varname CMAKE_FIND_ROOT_PATH CMAKE_PREFIX_PATH CMAKE_MODULE_PATH CMAKE_LIBRARY_PATH)
         if (DEFINED ${varname})
             STRING(REPLACE "\\" "/" varvalue "${${varname}}")
-	    SET(${varname} ${${varname}} PARENT_SCOPE)
+	    SET(${varname} ${${varname}})
 	    FILE(APPEND "${CMAKE_BINARY_DIR}/cget-env.cmake" "\nSET(${varname}  \"${${varname}}\" CACHE INTERNAL \"\")")
         endif ()
     endforeach ()
@@ -157,8 +157,27 @@ macro(CGET_PARSE_OPTIONS name)
         endif ()
     endif ()
 
+    if (ARGS_SUBMODULE)
+        EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/${ARGS_SUBMODULE}"
+                OUTPUT_VARIABLE SUBMODULE_VERSION)
+        STRING(STRIP "${SUBMODULE_VERSION}" SUBMODULE_VERSION)
+
+        EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} diff-index --quiet --cached HEAD --
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/${ARGS_SUBMODULE}" RESULT_VARIABLE IS_DIRTY)
+
+        if(${IS_DIRTY})
+
+            EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} diff
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/${ARGS_SUBMODULE}" OUTPUT_VARIABLE DIRTY_DIFF)
+
+            STRING(MD5 Diff_Hash "${DIRTY_DIFF}")
+            SET(SUBMODULE_VERSION "${SUBMODULE_VERSION}-${Diff_Hash}")
+        endif()
+    endif ()
+
+
     SET(REPO_HASH_STRING  "${name} ${ARGS_GIT} ${ARGS_VERSION} ${NOSUBMODULES} ${ARGS_COMMIT_ID} ${ARGS_REGISTRY_VERSION}")
-    SET(BUILD_HASH_STRING "${name} ${ARGS_OPTIONS} ${ARGS_NOSUBMODULES} ${CGET_BUILD_CONFIGS} ${CGET_CORE_VERSION} ${ARGS_NUGET_PACKAGE} ${ARGS_NUGET_USE_STATIC} ${ARGS_NUGET_VERSION} ${ARGS_BREW_PACKAGE}  ${ARGS_VERSION} ${ARGS_COMMIT_ID} ${ARGS_REGISTRY_VERSION}")
+    SET(BUILD_HASH_STRING "${name} ${ARGS_OPTIONS} ${ARGS_NOSUBMODULES} ${CGET_BUILD_CONFIGS} ${CGET_CORE_VERSION} ${ARGS_NUGET_PACKAGE} ${ARGS_NUGET_USE_STATIC} ${ARGS_NUGET_VERSION} ${ARGS_BREW_PACKAGE}  ${ARGS_VERSION} ${ARGS_COMMIT_ID} ${ARGS_REGISTRY_VERSION}${SUBMODULE_VERSION}")
     
     string(MD5 Repo_Hash "${REPO_HASH_STRING}")
     string(MD5 Build_Hash "${BUILD_HASH_STRING}")
@@ -203,6 +222,7 @@ macro(CGET_PARSE_OPTIONS name)
         set(CGET_${name}_INSTALL_DIR "${INSTALL_DIR}" CACHE STRING "" FORCE)
     endif ()
 
+
     if (ARGS_SUBMODULE)
         set(REPO_DIR "${CMAKE_SOURCE_DIR}/${ARGS_SUBMODULE}")
     endif ()
@@ -232,7 +252,7 @@ macro(CGET_PARSE_OPTIONS name)
         CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tNUGET_PACKAGE: ${ARGS_NUGET_PACKAGE}")
         CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tBREW_PACKAGE: ${ARGS_BREW_PACKAGE}")
         CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tCMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-        CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tCOMMIT_ID: ${ARGS_COMMIT_ID}")
+        CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tCOMMIT_ID: ${ARGS_COMMIT_ID} ${ARGS_VERSION} ${SUBMODULE_VERSION}")
         CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tCHECKOUT_TAG: ${CHECKOUT_TAG} (${NO_VERSION_SPECIFIED})")
         CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tFIND_OPTIONS: ${ARGS_OPTIONS} COMPONENETS ${ARGS_COMPONENTS}")
         CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tFIND VERSION: ${ARGS_CMAKE_VERSION}")
@@ -245,7 +265,7 @@ macro(CGET_PARSE_OPTIONS name)
         CGET_MESSAGE(${SETUP_LOG_LEVEL} "\tRepo_Hash: ${Repo_Hash}")
         CGET_MESSAGE(${SETUP_LOG_LEVEL} "\t${ARGS_SIMPLE_BUILD} ${ARGS_SIMPLE_BUILD_SOURCE_FILES}")
 
-	SET(CGET_${name}_FIRST_OPTIONS_RUN ON PARENT_SCOPE)
+	SET(CGET_${name}_FIRST_OPTIONS_RUN ON)
     endif ()
 endmacro()
 macro(CGET_SIMPLE_BUILD name)
@@ -400,10 +420,10 @@ endfunction(CGET_FORCE_BUILD)
 
 
 function(CGET_RESET_BUILD)
-  CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${BUILD_DIR}")
-  IF (DEFINED RELEASE_BUILD_DIR)
-    CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${RELEASE_BUILD_DIR}")
-  ENDIF ()
+  #    CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${BUILD_DIR}")
+  #    IF (DEFINED RELEASE_BUILD_DIR)
+  #      CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${RELEASE_BUILD_DIR}")
+  #    ENDIF ()
   file(WRITE "${INSTALL_DIR}/.installed" "")
   file(WRITE "${INSTALL_DIR}/.options" "")	
 endfunction()
@@ -414,9 +434,7 @@ function(CGET_BUILD)
 
     if (ARGS_SIMPLE_BUILD OR NOT BUILD_CACHE_VAL STREQUAL Build_Hash)
       CGET_MESSAGE(3 "Build out of date ${BUILD_CACHE_VAL} vs ${Build_Hash}")
-      if(CGET_CONFIG_FORCE_FULL_REBUILD)
-	CGET_RESET_BUILD()
-      endif()
+
       CGET_FORCE_BUILD(${ARGV})
       CGET_MESSAGE(3 "Update build file ${INSTALL_DIR}/.installed to ${Build_Hash}")
 
@@ -524,7 +542,7 @@ function(CGET_GET_PACKAGE)
     CGET_PARSE_OPTIONS(${ARGV})
     CGET_FILE_CONTENTS("${REPO_DIR}/.retrieved" REPO_CACHE_VAL)
     if (ARGS_SUBMODULE)
-        CGET_EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} submodule update ${REPO_DIR} --init)
+        CGET_EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} submodule update --init ${REPO_DIR})
     elseif (NOT REPO_CACHE_VAL STREQUAL Repo_Hash)
         CGET_MESSAGE(3 "Repo out of date ${REPO_CACHE_VAL} vs ${Repo_Hash}")
         CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove_directory "${REPO_DIR}")
@@ -538,17 +556,21 @@ function(CGET_GET_PACKAGE)
     CGET_MESSAGE(15 "EXIT CGET_GET_PACKAGE ${ARGV}")
 endfunction()
 
-function(CGET_FIND_DEPENDENCY)
+macro(CGET_FIND_DEPENDENCY NAME)
     if (ARGS_PROGRAM)
-        find_program(${ARGN})
+        find_program(${ARGV})
     elseif (ARGS_LIBRARY)
-        find_library(${ARGN})
+        find_library(${ARGV})
     else ()
-        find_package(${ARGN})
-    endif ()
-endfunction()
+        find_package(${ARGV})
 
-function(CGET_HAS_DEPENDENCY name)
+        IF (${${NAME}_FOUND})
+            SET(CGET_DEPENDENCY_CONFIG "${CGET_DEPENDENCY_CONFIG}\nFIND_PACKAGE(${NAME} HINTS ${CGET_${NAME}_INSTALL_DIR})")
+        ENDIF()
+    endif ()
+endmacro()
+
+macro(CGET_HAS_DEPENDENCY name)
     LIST(APPEND CGET_CURRENT_CHAIN "${name}")
     CGET_MESSAGE(15 "CGET_HAS_DEPENDENCY ${ARGV}")
     CGET_PARSE_OPTIONS(${ARGV})
@@ -558,42 +580,41 @@ function(CGET_HAS_DEPENDENCY name)
         CGET_FIND_DEPENDENCY(${ARGS_FINDNAME} ${ARGS_CMAKE_VERSION} COMPONENTS ${ARGS_COMPONENTS} QUIET ${ARGS_FIND_OPTIONS})
         IF (${${ARGS_FINDNAME}_FOUND})
             CGET_MESSAGE(1 "Found system ${name} ${ARGS_CMAKE_VERSION}")
-            return()
         ENDIF ()
     endif ()
 
-    # Check if there is already an installed dir with the correct hash.
-    # if there is, we don't need to checkout the repo or attempt a build
-    # on it. 
-    CGET_FILE_CONTENTS("${INSTALL_DIR}/.installed" BUILD_CACHE_VAL)
-    CGET_MESSAGE(15 "Build status ${BUILD_CACHE_VAL} vs ${Build_Hash}")
-    if(NEW_VERSION_AVAILABLE OR ARGS_SIMPLE_BUILD OR NOT BUILD_CACHE_VAL STREQUAL Build_Hash)
-      CGET_GET_PACKAGE(${ARGV})
+    if(NOT "${${ARGS_FINDNAME}_FOUND}")
+      
+      # Check if there is already an installed dir with the correct hash.
+      # if there is, we don't need to checkout the repo or attempt a build
+      # on it. 
+      CGET_FILE_CONTENTS("${INSTALL_DIR}/.installed" BUILD_CACHE_VAL)
+      CGET_MESSAGE(15 "Build status ${BUILD_CACHE_VAL} vs ${Build_Hash}")
+      if(NEW_VERSION_AVAILABLE OR ARGS_SIMPLE_BUILD OR NOT BUILD_CACHE_VAL STREQUAL Build_Hash)
+	CGET_GET_PACKAGE(${ARGV})
 
-      # The include.cmake just gets included and we don't try anything else
-      # since specialized instructions exist in that file
-      if (EXISTS "${REPO_DIR}/include.cmake")
-        set(ARGS_NO_FIND_PACKAGE ON)
-        CGET_MESSAGE(13 "Including ${REPO_DIR}/include.cmake")
-        include("${REPO_DIR}/include.cmake")
-      else()
-        if(CGET_CONFIG_FORCE_FULL_REBUILD)
-	  CGET_RESET_BUILD()
-        endif()
-	
-        CGET_BUILD(${ARGV})
+	# The include.cmake just gets included and we don't try anything else
+	# since specialized instructions exist in that file
+	if (EXISTS "${REPO_DIR}/include.cmake")
+          set(ARGS_NO_FIND_PACKAGE ON)
+          CGET_MESSAGE(13 "Including ${REPO_DIR}/include.cmake")
+          include("${REPO_DIR}/include.cmake")
+	else()
+
+          CGET_BUILD(${ARGV})
+	endif ()
       endif ()
-    endif ()
-    CGET_REGISTER_INSTALL_DIR("${INSTALL_DIR}")
+      CGET_REGISTER_INSTALL_DIR("${INSTALL_DIR}")
 
-    if (NOT ARGS_NO_FIND_PACKAGE)
+      if (NOT ARGS_NO_FIND_PACKAGE)
         CGET_MESSAGE(13 "Finding ${name} with ${ARGS_CMAKE_VERSION} ${ARGS_FIND_OPTIONS} in ${CMAKE_PREFIX_PATH} ${CMAKE_LIBRARY_PATH} ${CMAKE_INCLUDE_PATH}")
         CGET_FIND_DEPENDENCY(${ARGS_FINDNAME} ${ARGS_CMAKE_VERSION} REQUIRED ${ARGS_FIND_OPTIONS} COMPONENTS ${ARGS_COMPONENTS})
 
         IF (${${ARGS_FINDNAME}_FOUND})
-            CGET_MESSAGE(2 "Found ${name} ${ARGS_CMAKE_VERSION}")
+          CGET_MESSAGE(2 "Found ${name} ${ARGS_CMAKE_VERSION}")
         ENDIF ()
-    endif ()
-    CGET_MESSAGE(15 "EXIT CGET_HAS_DEPENDENCY ${ARGV}")
-endfunction(CGET_HAS_DEPENDENCY) 
+      endif ()
+      CGET_MESSAGE(15 "EXIT CGET_HAS_DEPENDENCY ${ARGV}")
+    endif()
+endmacro(CGET_HAS_DEPENDENCY) 
  
