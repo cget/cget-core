@@ -285,6 +285,7 @@ macro(CGET_BUILD_CMAKE name)
     endif ()
 
     set(CMAKE_OPTIONS ${ARGS_OPTIONS}
+            -DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON
             -C${CGET_BIN_DIR}/load.cmake
             -C${CMAKE_BINARY_DIR}/cget-env.cmake
             ${USER_INCLUDE_FILE}
