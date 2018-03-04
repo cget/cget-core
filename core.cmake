@@ -412,7 +412,7 @@ function(CGET_FORCE_BUILD name)
 		message(WARNING "No install target exists; giving it a good guess")
 		
 		CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E
-		  copy_directory "${REPO_DIR}/" "${TEMP_DIR}")
+		  copy_directory "${TEMP_SRC_DIR}/" "${TEMP_DIR}")
 		
 	      else()
 		message(FATAL_ERROR "Execute process '${ARGN}' failed with '${EXECUTE_RESULT}', result: ${RESULT_VARIABLE} ${ERROR_RESULT}")
@@ -486,7 +486,7 @@ function(CGET_DIRECT_GET_PACKAGE name)
         elseif ((MSVC OR MINGW) AND ARGS_NUGET_PACKAGE)
             CGET_MESSAGE(3 "Using nuget for ${name}")
           elseif (ARGS_GIT)
-            CGET_FIND_DEPENDENCY(Git)
+            FIND_PACKAGE(Git)
             CGET_MESSAGE(3 "Using git for ${name}")
             if (ARGS_COMMIT_ID)
                 set(_GIT_OPTIONS -n)
