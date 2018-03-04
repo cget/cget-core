@@ -383,10 +383,10 @@ function(CGET_FORCE_BUILD name)
         CGET_BUILD_CMAKE(${ARGV})
         set(CGET_${name}_BUILT 1)
     elseif (EXISTS ${REPO_DIR}/autogen.sh)
-        CGET_EXECUTE_PROCESS(COMMAND ./autogen.sh ${ARGS_OPTIONS} WORKING_DIRECTORY ${REPO_DIR})
-      endif ()
+      CGET_EXECUTE_PROCESS(COMMAND ./autogen.sh ${ARGS_OPTIONS} WORKING_DIRECTORY ${REPO_DIR})
+    endif ()
           
-    foreach (config_variant configure config bootstrap makefile)
+    foreach (config_variant configure config bootstrap makefile Makefile)
         if (NOT CGET_${name}_BUILT AND EXISTS ${REPO_DIR}/${config_variant})
             # Some config variants can't deal with spaces
             SET(TEMP_DIR "/tmp/cget/install_root")
@@ -400,9 +400,24 @@ function(CGET_FORCE_BUILD name)
 
             CGET_EXECUTE_PROCESS(COMMAND cp -R "${REPO_DIR}" "${TEMP_SRC_DIR}")
 
-            CGET_EXECUTE_PROCESS(COMMAND ./${config_variant} --prefix=${TEMP_DIR} ${ARGS_OPTIONS} WORKING_DIRECTORY ${TEMP_SRC_DIR})
+	    if(NOT "${config_variant}" STREQUAL "Makefile")
+              CGET_EXECUTE_PROCESS(COMMAND ./${config_variant} --prefix=${TEMP_DIR} ${ARGS_OPTIONS} WORKING_DIRECTORY ${TEMP_SRC_DIR})
+	    endif()	    
             CGET_EXECUTE_PROCESS(COMMAND make WORKING_DIRECTORY ${TEMP_SRC_DIR})
-            CGET_EXECUTE_PROCESS(COMMAND make install WORKING_DIRECTORY ${TEMP_SRC_DIR})
+
+	    EXECUTE_PROCESS(COMMAND make install WORKING_DIRECTORY ${TEMP_SRC_DIR} RESULT_VARIABLE EXECUTE_RESULT ERROR_VARIABLE ERROR_RESULT)
+
+	    if (EXECUTE_RESULT)
+	      if(${EXECUTE_RESULT} STREQUAL "2") # no target
+		message(WARNING "No install target exists; giving it a good guess")
+		
+		CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E
+		  copy_directory "${REPO_DIR}/" "${TEMP_DIR}")
+		
+	      else()
+		message(FATAL_ERROR "Execute process '${ARGN}' failed with '${EXECUTE_RESULT}', result: ${RESULT_VARIABLE} ${ERROR_RESULT}")
+	      endif()
+	    endif ()
 
             CGET_EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy_directory "${TEMP_DIR}" "${INSTALL_DIR}")
 
@@ -562,8 +577,8 @@ macro(CGET_FIND_DEPENDENCY NAME)
     elseif (ARGS_LIBRARY)
         find_library(${ARGV})
     else ()
-        find_package(${ARGV})
-
+      find_package(${ARGV})     
+	
         IF (${${NAME}_FOUND})
             SET(CGET_DEPENDENCY_CONFIG "${CGET_DEPENDENCY_CONFIG}\nFIND_PACKAGE(${NAME} HINTS ${CGET_${NAME}_INSTALL_DIR})")
         ENDIF()
@@ -577,10 +592,12 @@ macro(CGET_HAS_DEPENDENCY name)
 
     CGET_MESSAGE(12 "Package ${name}(tag: '${CHECKOUT_TAG}') checkout to ${REPO_DIR}, building in ${BUILD_DIR}")
     if (ARGS_ALLOW_SYSTEM)
-        CGET_FIND_DEPENDENCY(${ARGS_FINDNAME} ${ARGS_CMAKE_VERSION} COMPONENTS ${ARGS_COMPONENTS} QUIET ${ARGS_FIND_OPTIONS})
-        IF (${${ARGS_FINDNAME}_FOUND})
-            CGET_MESSAGE(1 "Found system ${name} ${ARGS_CMAKE_VERSION}")
-        ENDIF ()
+      CGET_FIND_DEPENDENCY(${ARGS_FINDNAME} ${ARGS_CMAKE_VERSION} COMPONENTS ${ARGS_COMPONENTS} QUIET ${ARGS_FIND_OPTIONS})
+      IF (${${ARGS_FINDNAME}_FOUND})
+        CGET_MESSAGE(1 "Found system ${name} ${ARGS_CMAKE_VERSION}")
+      else()
+	CGET_MESSAGE(1 "No system package for ${name} ${ARGS_FINDNAME} ${ARGS_CMAKE_VERSION}")
+      ENDIF ()
     endif ()
 
     if(NOT "${${ARGS_FINDNAME}_FOUND}")
