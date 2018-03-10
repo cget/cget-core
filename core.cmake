@@ -549,6 +549,7 @@ function(CGET_DIRECT_GET_PACKAGE name)
             endif ()
         endif ()
     endif ()
+
 endfunction()
 
 function(CGET_GET_PACKAGE)
@@ -575,7 +576,8 @@ macro(CGET_FIND_DEPENDENCY NAME)
     if (ARGS_PROGRAM)
         find_program(${ARGV})
     elseif (ARGS_LIBRARY)
-        find_library(${ARGV})
+        string(TOUPPER ${NAME} UPPER_NAME)
+        find_library(${UPPER_NAME}_LIBRARY ${ARGV} "PATHS ${CGET_${NAME}_INSTALL_DIR} ${CGET_${NAME}_INSTALL_DIR}/lib")
     else ()
       find_package(${ARGV})     
 	
