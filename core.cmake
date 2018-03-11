@@ -577,6 +577,8 @@ macro(CGET_FIND_DEPENDENCY NAME)
         find_program(${ARGV})
     elseif (ARGS_LIBRARY)
         string(TOUPPER ${NAME} UPPER_NAME)
+        set(${UPPER_NAME}_LIBRARY "${UPPER_NAME}_LIBRARY-NOTFOUND")
+
         find_library(${UPPER_NAME}_LIBRARY ${ARGV} "PATHS ${CGET_${NAME}_INSTALL_DIR} ${CGET_${NAME}_INSTALL_DIR}/lib")
     else ()
       find_package(${ARGV})     
