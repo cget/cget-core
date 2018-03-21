@@ -1,8 +1,7 @@
-
 function(CGET_BREW_BUILD name version)
     SET(CGET_BREW_COMMAND "${CGET_INSTALL_DIR}/bin/brew")
     if(NOT EXISTS ${CGET_BREW_COMMAND})
-        CGET_GET_PACKAGE(brew GITHUB Homebrew/brew VERSION 1.1.8 NO_FIND_PACKAGE)
+        CGET_GET_PACKAGE(brew GITHUB Homebrew/brew VERSION 1.5.9 NO_FIND_PACKAGE)
         FILE(COPY "${CGET_brew_REPO_DIR}/bin" DESTINATION "${CGET_INSTALL_DIR}")
         FILE(COPY "${CGET_brew_REPO_DIR}/Library" DESTINATION "${CGET_INSTALL_DIR}")
     endif()
