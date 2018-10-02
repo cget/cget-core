@@ -40,7 +40,7 @@ macro(CGET_REGISTER_INSTALL_DIR INSTALL_DIR)
       foreach (varname CMAKE_FIND_ROOT_PATH CMAKE_INCLUDE_PATH CMAKE_PREFIX_PATH CMAKE_MODULE_PATH CMAKE_LIBRARY_PATH)
         if (DEFINED ${varname})
             STRING(REPLACE "\\" "/" varvalue "${${varname}}")
-	    SET(${varname} ${${varname}})
+	    SET(${varname} ${varvalue})
 	    FILE(APPEND "${CMAKE_BINARY_DIR}/cget-env.cmake" "\nSET(${varname}  \"${${varname}}\" CACHE INTERNAL \"\")")
         endif ()
     endforeach ()
@@ -55,13 +55,20 @@ endmacro()
 CGET_REGISTER_INSTALL_DIR("${CGET_INSTALL_DIR}")
 
 function(CGET_WRITE_CGET_SETTINGS_FILE)
-    foreach (varname CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH CGET_BIN_DIR CMAKE_CONFIGURATION_TYPES CMAKE_INSTALL_RPATH 
-					 CGET_PACKAGE_DIR CGET_INSTALL_DIR CGET_CORE_DIR CMAKE_FIND_ROOT_PATH CMAKE_PREFIX_PATH 
-					 BUILD_SHARED_LIBS CMAKE_FIND_LIBRARY_SUFFIXES CGET_BUILD_CONFIGS CMAKE_TOOLCHAIN_FILE
-					 CMAKE_SYSTEM_NAME CMAKE_SYSTEM_VERSION
-					 ANDROID_TOOLCHAIN ANDROID_NATIVE_API_LEVEL ANDROID_STL ANDROID_STANDALONE_TOOLCHAIN
-					 ANDROID_ABI ANDROID_NDK ANDROID_ARCH_ABI ANDROID_STL_TYPE
-					 CMAKE_ANDROID_ARCH_ABI CMAKE_ANDROID_STL_TYPE CMAKE_ANDROID_NDK ANDROID_ALLOW_UNDEFINED_SYMBOLS)
+    set(CGET_PASSTHRU_VARS
+        CMAKE_INCLUDE_PATH CMAKE_LIBRARY_PATH CGET_BIN_DIR CMAKE_CONFIGURATION_TYPES CMAKE_INSTALL_RPATH 
+        CGET_PACKAGE_DIR CGET_INSTALL_DIR CGET_CORE_DIR CMAKE_FIND_ROOT_PATH CMAKE_PREFIX_PATH 
+        BUILD_SHARED_LIBS CMAKE_FIND_LIBRARY_SUFFIXES CGET_BUILD_CONFIGS CMAKE_TOOLCHAIN_FILE
+        CMAKE_SYSTEM_VERSION
+        ANDROID_TOOLCHAIN ANDROID_NATIVE_API_LEVEL ANDROID_STL ANDROID_STANDALONE_TOOLCHAIN
+        ANDROID_ABI ANDROID_NDK ANDROID_ARCH_ABI ANDROID_STL_TYPE
+        CMAKE_ANDROID_ARCH_ABI CMAKE_ANDROID_STL_TYPE CMAKE_ANDROID_NDK ANDROID_ALLOW_UNDEFINED_SYMBOLS)
+    # Only include CMAKE_SYSTEM_NAME if it's different from CMAKE_HOST_SYSTEM_NAME, otherwise CMake will always think it is cross-compiling
+    # See https://cmake.org/cmake/help/latest/variable/CMAKE_CROSSCOMPILING.html
+    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL ${CMAKE_HOST_SYSTEM_NAME})
+        list(APPEND CGET_PASSTHRU_VARS CMAKE_SYSTEM_NAME)
+    endif()
+    foreach (varname ${CGET_PASSTHRU_VARS})
         if (DEFINED ${varname})
             STRING(REPLACE "\\" "/" varvalue "${${varname}}")
             set(WRITE_STR "${WRITE_STR}SET(${varname} \t\"${varvalue}\" CACHE STRING \"\")\n")
@@ -635,18 +642,18 @@ macro(CGET_HAS_DEPENDENCY name)
       CGET_FILE_CONTENTS("${INSTALL_DIR}/.installed" BUILD_CACHE_VAL)
       CGET_MESSAGE(15 "Build status ${BUILD_CACHE_VAL} vs ${Build_Hash}")
       if(NEW_VERSION_AVAILABLE OR ARGS_SIMPLE_BUILD OR NOT BUILD_CACHE_VAL STREQUAL Build_Hash)
-	CGET_GET_PACKAGE(${ARGV})
+        CGET_GET_PACKAGE(${ARGV})
 
-	# The include.cmake just gets included and we don't try anything else
-	# since specialized instructions exist in that file
-	if (EXISTS "${REPO_DIR}/include.cmake")
+        # The include.cmake just gets included and we don't try anything else
+        # since specialized instructions exist in that file
+        if (EXISTS "${REPO_DIR}/include.cmake")
           set(ARGS_NO_FIND_PACKAGE ON)
           CGET_MESSAGE(13 "Including ${REPO_DIR}/include.cmake")
           include("${REPO_DIR}/include.cmake")
-	else()
+        else()
 
           CGET_BUILD(${ARGV})
-	endif ()
+        endif ()
       endif ()
       CGET_REGISTER_INSTALL_DIR("${INSTALL_DIR}")
 
