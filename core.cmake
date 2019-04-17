@@ -400,6 +400,10 @@ function(CGET_FORCE_BUILD name)
     endif ()
     set(CGET_${name}_BUILT 0)
 
+    CGET_MESSAGE(1 "Locking ${BUILD_DIR}/.cget_build.lock") 
+    FILE(LOCK "${BUILD_DIR}/.cget_build.lock" GUARD FUNCTION)     
+
+    
     file(MAKE_DIRECTORY ${BUILD_DIR})
     if (APPLE AND ARGS_BREW_PACKAGE)
         set(CGET_${name}_BUILT 1)
@@ -509,13 +513,16 @@ function(CGET_DIRECT_GET_PACKAGE name)
     CGET_PARSE_OPTIONS(${ARGV})
     CGET_MESSAGE(13 "CGET_DIRECT_GET_PACKAGE ${ARGV}")
     CGET_MESSAGE(1 "Getting ${name}...")
-
+    
     set(GIT_SUBMODULE_OPTIONS "--recursive")
     if (ARGS_NOSUBMODULES)
         set(GIT_SUBMODULE_OPTIONS "")
     endif ()
     set(STAGING_DIR "${REPO_DIR}")
 
+    CGET_MESSAGE(1 "Locking ${REPO_DIR}.cget_get_package.lock")
+    FILE(LOCK "${REPO_DIR}.cget_get_package.lock" GUARD FUNCTION)
+    
     if (NOT EXISTS ${STAGING_DIR})
         if (APPLE AND ARGS_BREW_PACKAGE)
             CGET_MESSAGE(3 "Using brew for ${name}")
