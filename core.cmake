@@ -24,8 +24,11 @@ macro(CGET_REGISTER_INSTALL_DIR INSTALL_DIR)
   if (EXISTS ${INSTALL_DIR})
     if (NOT CGET_IS_SCRIPT_MODE)
 
-      CGET_MESSAGE(15 "Registering install dir ${INSTALL_DIR}")
-      include_directories("${INSTALL_DIR}/include")
+        CGET_MESSAGE(15 "Registering install dir ${INSTALL_DIR}")
+      IF(EXISTS "${INSTALL_DIR}/include")
+          include_directories("${INSTALL_DIR}/include")
+          CGET_MESSAGE(15 "Registering include dir ${INSTALL_DIR}/include")
+      ENDIF()
       link_directories("${INSTALL_DIR}")
 
       FILE(MAKE_DIRECTORY ${INSTALL_DIR}/lib/cmake)
